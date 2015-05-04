@@ -231,8 +231,6 @@ function get_cap_overlay($overlay_id) {
         return json_encode('');
     }
 
-    // @todo need to also check for if is published.
-
     $overlay = get_post($overlay_id);
 
     // Cookie related variables
