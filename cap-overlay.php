@@ -30,6 +30,8 @@ Author URI: http://sethrubenstein.info
  * **********************************************************************
 */
 
+add_image_size('cap_overlay_bg', 1000, 625, array('left','top'));
+
 if ( ! function_exists('register_cap_overlay') ) {
 
     // Register Custom Post Type
@@ -78,6 +80,115 @@ if ( ! function_exists('register_cap_overlay') ) {
 
 }
 
+if( function_exists('register_field_group') ):
+
+register_field_group(array (
+	'key' => 'group_554792f6ea6f3',
+	'title' => 'Overlay Settings',
+	'fields' => array (
+		array (
+			'key' => 'field_5547bcfa35c2f',
+			'label' => 'Background Image',
+			'name' => 'overlay_bg',
+			'prefix' => '',
+			'type' => 'image',
+			'instructions' => '',
+			'required' => 0,
+			'conditional_logic' => 0,
+			'wrapper' => array (
+				'width' => '',
+				'class' => '',
+				'id' => '',
+			),
+			'return_format' => 'id',
+			'preview_size' => 'medium',
+			'library' => 'all',
+			'min_width' => '',
+			'min_height' => '',
+			'min_size' => '',
+			'max_width' => '',
+			'max_height' => '',
+			'max_size' => '',
+			'mime_types' => '',
+		),
+		array (
+			'key' => 'field_554795c550ea4',
+			'label' => 'Overlay Javascript',
+			'name' => 'overlay_javascript',
+			'prefix' => '',
+			'type' => 'textarea',
+			'instructions' => 'If you have javascript specific to this overlay put it in here..<br>
+
+For example if you wanted to close the overlay when a user clicks on X element of a class...<br><br><br>
+<code>
+jQuery(".close-the-overlay-class").click(function() {<br>
+        jQuery("#overlay").hide();<br>
+        jQuery("body").removeClass("overlay-visible");<br>
+        ga("send", "event", {<br>
+                "eventCategory": "Overlay",<br>
+                "eventAction": "Exit",<br>
+                "eventLabel": "overlay-POSTIDHERE",<br>
+                "nonInteraction": true<br>
+        });<br>
+});
+</code>',
+			'required' => 0,
+			'conditional_logic' => 0,
+			'wrapper' => array (
+				'width' => '',
+				'class' => '',
+				'id' => '',
+			),
+			'default_value' => '',
+			'placeholder' => '',
+			'maxlength' => '',
+			'rows' => '',
+			'new_lines' => '',
+			'readonly' => 0,
+			'disabled' => 0,
+		),
+		array (
+			'key' => 'field_5547afb92fbd3',
+			'label' => 'Cookie Duration',
+			'name' => 'cookie_duration',
+			'prefix' => '',
+			'type' => 'text',
+			'instructions' => '',
+			'required' => 0,
+			'conditional_logic' => 0,
+			'wrapper' => array (
+				'width' => '',
+				'class' => '',
+				'id' => '',
+			),
+			'default_value' => '',
+			'placeholder' => '',
+			'prepend' => '',
+			'append' => 'days',
+			'maxlength' => '',
+			'readonly' => 0,
+			'disabled' => 0,
+		),
+	),
+	'location' => array (
+		array (
+			array (
+				'param' => 'post_type',
+				'operator' => '==',
+				'value' => 'cap_overlay',
+			),
+		),
+	),
+	'menu_order' => 0,
+	'position' => 'normal',
+	'style' => 'default',
+	'label_placement' => 'top',
+	'instruction_placement' => 'label',
+	'hide_on_screen' => '',
+));
+
+endif;
+
 // CAP Overlay editor UX improvements...
 function remove_yoast_from_overlay(){
     remove_meta_box('wpseo_meta', 'cap_overlay', 'normal');
@@ -105,7 +216,7 @@ function cap_overlay_enqueue() {
         wp_enqueue_script( 'js-cookie', array('jquery') );
     }
 
-    wp_enqueue_style( 'cap-overlay-style', plugin_dir_url(__FILE__).'cap-overlay.css' );
+    wp_enqueue_style( 'cap-overlay-style', plugin_dir_url(__FILE__).'cap-overlay-style.css' );
 }
 add_action( 'wp_enqueue_scripts', 'cap_overlay_enqueue' );
 
@@ -114,7 +225,7 @@ add_action( 'wp_enqueue_scripts', 'cap_overlay_enqueue' );
  * @param post ID of the overlay
  * @return json encoded markup and scripts for the overlay.
  */
-function cap_overlay_construct($overlay_id) {
+function get_cap_overlay($overlay_id) {
     // If an id is not passed into the function or if the ID passed is not in fact an overlay then cancel.
     if ( empty($overlay_id) || 'cap_overlay' != get_post_type( $overlay_id ) ) {
         return json_encode('');
@@ -125,7 +236,7 @@ function cap_overlay_construct($overlay_id) {
     $overlay = get_post($overlay_id);
 
     // Cookie related variables
-    $tracking_label = 'this is the post id and date updated in one thing';
+    $tracking_label = 'overlay-'.$overlay->ID; // a combination of the post id and post modified date.
     $cookie_name = $tracking_label;
     $cookie_days = (int) get_post_meta($overlay->ID, "cookie_duration", true);
 
@@ -133,11 +244,17 @@ function cap_overlay_construct($overlay_id) {
     // when you click send will hide/close the overlay and set the cookie.
     $additional_script = '';
     if (get_field('overlay_javascript')) {
-        $additional_script = get_field('overlay_javascript');
+        $additional_script = get_field('overlay_javascript', $overlay_id);
+    }
+
+    $overlay_bg = '';
+    if (get_field('overlay_bg', $overlay_id)) {
+        $overlay_image = wp_get_attachment_image_src( get_field('overlay_bg', $overlay_id), 'cap_overlay_bg' );
+        $overlay_bg = 'style="background-image: url('.$overlay_image[0].');" class="has-bg-image"';
     }
 
     $script = '
-    <script type="text/javscript">
+    jQuery(document).ready(function(){
         // Check for cookie support in browser.
         var cookies_enabled = false;
         try {
@@ -146,6 +263,7 @@ function cap_overlay_construct($overlay_id) {
             if(val){
                 cookies_enabled = true;
                 Cookies.remove("are_cookies_enabled");
+                console.log("Cookie test complete");
             }
         } catch (e){
             // do nothing
@@ -157,18 +275,20 @@ function cap_overlay_construct($overlay_id) {
         }
 
         // Check for existance of cookie.
-        var cookie = Cookies.get('.$cookie_name.'");
+        var cookie_exist = Cookies.get("'.$cookie_name.'");
 
         // If there is, then just exit -- dont show the overlay
-        if (cookie) {
+        if (cookie_exist) {
             return;
         }
 
         // If not then lets fire off the modal overlay.
         jQuery("#overlay").addClass("visible");
+        jQuery("body").addClass("overlay-visible");
 
         // Now that we have fired off the modal lets set a cookie so we dont show this overlay again.
         Cookies.set("'.$cookie_name.'", "displayed", { expires: '.$cookie_days.' });
+        console.log("Cookie SET");
 
         // Tell Google Analytics that this modal has been seen.
         ga("send", "event", {
@@ -183,7 +303,7 @@ function cap_overlay_construct($overlay_id) {
             var ch = event.which
             if(ch == 27) {
                 jQuery("#overlay").hide();
-
+                jQuery("body").removeClass("overlay-visible");
                 ga("send", "event", {
                     "eventCategory": "Overlay",
                     "eventAction": "Exit",
@@ -194,8 +314,9 @@ function cap_overlay_construct($overlay_id) {
         });
 
         // If the user clicks modal background or overlay close then exit overlay.
-        jQuery("html, #close-overlay-button, #close-overlay-link").click(function() {
+        jQuery("html, #close-overlay-button, #close-overlay-link, .close-the-overlay").click(function() {
             jQuery("#overlay").hide();
+            jQuery("body").removeClass("overlay-visible");
             ga("send", "event", {
                 "eventCategory": "Overlay",
                 "eventAction": "Exit",
@@ -206,39 +327,57 @@ function cap_overlay_construct($overlay_id) {
 
         // Ensure that clicking in the actual overlay content to interact with content
         // doesnt close overlay.
-        jQuery("#overlay-content").click(function(event){
+        jQuery(".overlay-content").click(function(event){
             event.stopPropagation();
         });
         '.$additional_script.'
-    </script>
+    });
     ';
 
     // Overlay Markup + Script to be returned via JSON.
     $markup = '
     <div id="overlay">
-        <div id="overlay-container">
+        <div class="overlay-container">
             <div class="overlay-close-area">
                 <span id="close-overlay-button" href="javascript:void(0)">&times;</span>
             </div>
-            <div id="overlay-content">
-                <div class="opacity-background">
-                    <div class="overlay-form">
-                        '.$overlay->post_content.'
-                    </div>
+            <div id="overlay-wrapper" '.$overlay_bg.'>
+                <div class="overlay-content">
+                    <div class="overlay-content-inner">'.$overlay->post_content.'</div>
                 </div>
             </div>
         </div>
     </div>
+    <script type="text/javascript">'.$script.'</script>
     ';
-    $markup .= $script;
 
     return json_encode($markup);
 }
 
-function get_latest_cap_overlay() {
-    return $post_id;
-}
+function cap_overlay_init() {
+    $args = array(
+        "posts_per_page" => 1,
+        "post_type"      => "cap_overlay",
+        'post_status'      => 'publish'
+    );
+    $overlays = get_posts($args);
+    $overlay = array_shift($overlays);
 
-function cap_overlay_display() {
-    // mainly a script
+    // if there is no overlay, just return
+    if ( empty($overlay)) {
+        return;
+    }
+
+    // display the overlay
+    ?>
+    <script>
+        jQuery(document).ready(function(){
+            // Display the overlay
+            var overlayCode = <?php echo get_cap_overlay($overlay->ID); ?>;
+            jQuery("body").append(overlayCode);
+
+        });
+    </script>
+<?php
 }
+add_action('wp_footer','cap_overlay_init', 100);
