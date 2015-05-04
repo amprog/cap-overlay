@@ -389,7 +389,7 @@ function cap_overlay_editor_add_metabox() {
 	foreach ( $screens as $screen ) {
 
 		add_meta_box(
-			'myplugin_sectionid',
+			'overlay-editor-preview',
 			__( 'CAP Overlay Preview', 'myplugin_textdomain' ),
 			'cap_overlay_editor_preview',
 			$screen
@@ -404,6 +404,7 @@ add_action( 'add_meta_boxes', 'cap_overlay_editor_add_metabox' );
  * @param WP_Post $post The object for the current post/page.
  */
 function cap_overlay_editor_preview( $post ) {
+    if (!empty($post->post_content)):
     $overlay_image = wp_get_attachment_image_src( get_post_meta($post->ID,'overlay_bg', true), 'cap_overlay_bg' );
     $overlay_bg = 'style="background-image: url('.$overlay_image[0].');" class="has-bg-image"';
     ?>
@@ -494,5 +495,10 @@ function cap_overlay_editor_preview( $post ) {
       height: auto;
     }
     </style>
-    <?php
+    <script type="text/javascript">
+    jQuery(document).ready(function(){
+        jQuery('#overlay-editor-preview').insertAfter('#titlediv');
+    });
+    </script>
+    <?php endif;
 }
