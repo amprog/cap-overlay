@@ -381,3 +381,118 @@ function cap_overlay_init() {
 <?php
 }
 add_action('wp_footer','cap_overlay_init', 100);
+
+function cap_overlay_editor_add_metabox() {
+
+	$screens = array( 'cap_overlay' );
+
+	foreach ( $screens as $screen ) {
+
+		add_meta_box(
+			'myplugin_sectionid',
+			__( 'CAP Overlay Preview', 'myplugin_textdomain' ),
+			'cap_overlay_editor_preview',
+			$screen
+		);
+	}
+}
+add_action( 'add_meta_boxes', 'cap_overlay_editor_add_metabox' );
+
+/**
+ * Prints the box content.
+ *
+ * @param WP_Post $post The object for the current post/page.
+ */
+function cap_overlay_editor_preview( $post ) {
+    $overlay_image = wp_get_attachment_image_src( get_post_meta($post->ID,'overlay_bg', true), 'cap_overlay_bg' );
+    $overlay_bg = 'style="background-image: url('.$overlay_image[0].');" class="has-bg-image"';
+    ?>
+    <p>This will give you a rough idea how your overlay will look.</p>
+    <div id="overlay-wrapper" <?php echo $overlay_bg;?>>
+        <div class="overlay-content">
+            <div class="overlay-content-inner">
+                <?php echo htmlspecialchars_decode(htmlentities( html_entity_decode($post->post_content) ));?>
+            </div>
+        </div>
+    </div>
+    <style>
+    #overlay-wrapper {
+      display: block;
+      max-width: 1000px;
+      min-width: 320px;
+      width: 100%;
+      margin-left: auto;
+      margin-right: auto;
+      position: relative;
+      background: white;
+      color: #000;
+      background-size: contain;
+      background-repeat: no-repeat;
+    }
+    #overlay-wrapper:before {
+      display: block;
+      content: "";
+      width: 100%;
+      padding-top: 62.5%;
+    }
+    #overlay-wrapper > div {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+    #overlay-wrapper.has-bg-image .overlay-content {
+      background-color: rgba(0, 0, 0, 0.5);
+      color: white !important;
+    }
+    #overlay-wrapper.has-bg-image .overlay-content a {
+      color: white !important;
+    }
+    #overlay-wrapper .overlay-content {
+      padding: 1em;
+      display: -webkit-box;
+      display: -moz-box;
+      display: box;
+      display: -webkit-flex;
+      display: -moz-flex;
+      display: -ms-flexbox;
+      display: flex;
+      -webkit-box-align: center;
+      -moz-box-align: center;
+      box-align: center;
+      -webkit-align-items: center;
+      -moz-align-items: center;
+      -ms-align-items: center;
+      -o-align-items: center;
+      align-items: center;
+      -ms-flex-align: center;
+      -webkit-box-pack: center;
+      -moz-box-pack: center;
+      box-pack: center;
+      -webkit-justify-content: center;
+      -moz-justify-content: center;
+      -ms-justify-content: center;
+      -o-justify-content: center;
+      justify-content: center;
+      -ms-flex-pack: center;
+      -webkit-box-orient: vertical;
+      -moz-box-orient: vertical;
+      box-orient: vertical;
+      -webkit-box-direction: normal;
+      -moz-box-direction: normal;
+      box-direction: normal;
+      -webkit-flex-direction: column;
+      -moz-flex-direction: column;
+      flex-direction: column;
+      -ms-flex-direction: column;
+    }
+    #overlay-wrapper .overlay-content img,
+    #overlay-wrapper .overlay-content embed,
+    #overlay-wrapper .overlay-content video {
+      max-width: 100%;
+      height: auto;
+    }
+    </style>
+    <?php
+}
